@@ -14,7 +14,7 @@ while (true)
     var obj = new
     {
         event_id = Guid.NewGuid().ToString("N"),
-        device_id = "azaza-1",
+        device_id = "device20250410",
         event_produced_utc = DateTime.UtcNow,
         form = "liquid",
         temperature = 20.05D + (i),
