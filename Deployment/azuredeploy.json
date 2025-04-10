@@ -1,0 +1,697 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "IotHubs_skytree_iothub_t_connectionString": {
+      "type": "SecureString"
+    },
+    "IotHubs_skytree_iothub_t_containerName": {
+      "type": "SecureString"
+    },
+    "Clusters_skytree_adx_t_name": {
+      "defaultValue": "skytree-adx-t",
+      "type": "String"
+    },
+    "IotHubs_skytree_iothub_t_name": {
+      "defaultValue": "skytree-iothub-t",
+      "type": "String"
+    },
+    "namespaces_skytree_eh_t_name": {
+      "defaultValue": "skytree-eh-t",
+      "type": "String"
+    },
+    "storageAccounts_skytreestoraget_name": {
+      "defaultValue": "skytreestoraget",
+      "type": "String"
+    },
+    "streamingjobs_skytree_asa_iothub_adx_t_name": {
+      "defaultValue": "skytree-asa-iothub-adx-t",
+      "type": "String"
+    },
+    "streamingjobs_skytree_asa_iothub_alerts_t_name": {
+      "defaultValue": "skytree-asa-iothub-alerts-t",
+      "type": "String"
+    },
+    "streamingjobs_skytree_asa_iothub_blobstorage_t_name": {
+      "defaultValue": "skytree-asa-iothub-blobstorage-t",
+      "type": "String"
+    }
+  },
+  "variables": {},
+  "resources": [
+    {
+      "type": "Microsoft.Devices/IotHubs",
+      "apiVersion": "2023-06-30",
+      "name": "[parameters('IotHubs_skytree_iothub_t_name')]",
+      "location": "westeurope",
+      "sku": {
+        "name": "F1",
+        "tier": "Free",
+        "capacity": 1
+      },
+      "identity": {
+        "type": "None"
+      },
+      "properties": {
+        "ipFilterRules": [],
+        "eventHubEndpoints": {
+          "events": {
+            "retentionTimeInDays": 1,
+            "partitionCount": 2
+          }
+        },
+        "routing": {
+          "endpoints": {
+            "serviceBusQueues": [],
+            "serviceBusTopics": [],
+            "eventHubs": [],
+            "storageContainers": [],
+            "cosmosDBSqlContainers": []
+          },
+          "routes": [],
+          "fallbackRoute": {
+            "name": "$fallback",
+            "source": "DeviceMessages",
+            "condition": "true",
+            "endpointNames": [
+              "events"
+            ],
+            "isEnabled": true
+          }
+        },
+        "storageEndpoints": {
+          "$default": {
+            "sasTtlAsIso8601": "PT1H",
+            "connectionString": "[parameters('IotHubs_skytree_iothub_t_connectionString')]",
+            "containerName": "[parameters('IotHubs_skytree_iothub_t_containerName')]"
+          }
+        },
+        "messagingEndpoints": {
+          "fileNotifications": {
+            "lockDurationAsIso8601": "PT1M",
+            "ttlAsIso8601": "PT1H",
+            "maxDeliveryCount": 10
+          }
+        },
+        "enableFileUploadNotifications": false,
+        "cloudToDevice": {
+          "maxDeliveryCount": 10,
+          "defaultTtlAsIso8601": "PT1H",
+          "feedback": {
+            "lockDurationAsIso8601": "PT1M",
+            "ttlAsIso8601": "PT1H",
+            "maxDeliveryCount": 10
+          }
+        },
+        "features": "RootCertificateV2",
+        "disableLocalAuth": false,
+        "allowedFqdnList": [],
+        "enableDataResidency": false
+      },
+      "resources": [
+        {
+          "type": "eventHubEndpoints/ConsumerGroups",
+          "apiVersion": "2023-06-30",
+          "name": "adx",
+          "dependsOn": [
+            "[parameters('IotHubs_skytree_iothub_t_name')]"
+          ]
+        },
+        {
+          "type": "eventHubEndpoints/ConsumerGroups",
+          "apiVersion": "2023-06-30",
+          "name": "alerts",
+          "dependsOn": [
+            "[parameters('IotHubs_skytree_iothub_t_name')]"
+          ]
+        },
+        {
+          "type": "eventHubEndpoints/ConsumerGroups",
+          "apiVersion": "2023-06-30",
+          "name": "blobstorage",
+          "dependsOn": [
+            "[parameters('IotHubs_skytree_iothub_t_name')]"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Microsoft.EventHub/namespaces",
+      "apiVersion": "2024-05-01-preview",
+      "name": "[parameters('namespaces_skytree_eh_t_name')]",
+      "location": "westeurope",
+      "sku": {
+        "name": "Basic",
+        "tier": "Basic",
+        "capacity": 1
+      },
+      "properties": {
+        "geoDataReplication": {
+          "maxReplicationLagDurationInSeconds": 0,
+          "locations": [
+            {
+              "locationName": "westeurope",
+              "roleType": "Primary"
+            }
+          ]
+        },
+        "minimumTlsVersion": "1.2",
+        "publicNetworkAccess": "Enabled",
+        "disableLocalAuth": false,
+        "zoneRedundant": true,
+        "isAutoInflateEnabled": false,
+        "maximumThroughputUnits": 0,
+        "kafkaEnabled": true
+      }
+    },
+    {
+      "type": "Microsoft.Kusto/Clusters",
+      "apiVersion": "2024-04-13",
+      "name": "[parameters('Clusters_skytree_adx_t_name')]",
+      "location": "West Europe",
+      "sku": {
+        "name": "Dev(No SLA)_Standard_E2a_v4",
+        "tier": "Basic",
+        "capacity": 1
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "trustedExternalTenants": [],
+        "enableDiskEncryption": false,
+        "enableStreamingIngest": true,
+        "languageExtensions": {
+          "value": []
+        },
+        "enablePurge": true,
+        "enableDoubleEncryption": false,
+        "engineType": "V3",
+        "acceptedAudiences": [],
+        "restrictOutboundNetworkAccess": "Disabled",
+        "allowedFqdnList": [],
+        "publicNetworkAccess": "Enabled",
+        "allowedIpRangeList": [],
+        "enableAutoStop": false,
+        "publicIPType": "IPv4"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2024-01-01",
+      "name": "[parameters('storageAccounts_skytreestoraget_name')]",
+      "location": "westeurope",
+      "sku": {
+        "name": "Standard_LRS",
+        "tier": "Standard"
+      },
+      "kind": "StorageV2",
+      "properties": {
+        "dnsEndpointType": "Standard",
+        "defaultToOAuthAuthentication": false,
+        "publicNetworkAccess": "Enabled",
+        "allowCrossTenantReplication": false,
+        "minimumTlsVersion": "TLS1_2",
+        "allowBlobPublicAccess": false,
+        "allowSharedKeyAccess": true,
+        "largeFileSharesState": "Enabled",
+        "networkAcls": {
+          "bypass": "AzureServices",
+          "virtualNetworkRules": [],
+          "ipRules": [],
+          "defaultAction": "Allow"
+        },
+        "supportsHttpsTrafficOnly": true,
+        "encryption": {
+          "requireInfrastructureEncryption": false,
+          "services": {
+            "file": {
+              "keyType": "Account",
+              "enabled": true
+            },
+            "blob": {
+              "keyType": "Account",
+              "enabled": true
+            }
+          },
+          "keySource": "Microsoft.Storage"
+        },
+        "accessTier": "Hot"
+      }
+    },
+    {
+      "type": "Microsoft.StreamAnalytics/streamingjobs",
+      "apiVersion": "2021-10-01-preview",
+      "name": "[parameters('streamingjobs_skytree_asa_iothub_adx_t_name')]",
+      "location": "West Europe",
+      "sku": {
+        "name": "StandardV2"
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "sku": {
+          "name": "StandardV2"
+        },
+        "outputStartMode": "JobStartTime",
+        "outputStartTime": "2025-04-09T20:05:34.77Z",
+        "eventsOutOfOrderPolicy": "Adjust",
+        "outputErrorPolicy": "Stop",
+        "eventsOutOfOrderMaxDelayInSeconds": 0,
+        "eventsLateArrivalMaxDelayInSeconds": 5,
+        "dataLocale": "en-US",
+        "compatibilityLevel": "1.2",
+        "contentStoragePolicy": "SystemAccount",
+        "jobType": "Cloud"
+      }
+    },
+    {
+      "type": "Microsoft.StreamAnalytics/streamingjobs",
+      "apiVersion": "2021-10-01-preview",
+      "name": "[parameters('streamingjobs_skytree_asa_iothub_alerts_t_name')]",
+      "location": "West Europe",
+      "sku": {
+        "name": "StandardV2"
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "sku": {
+          "name": "StandardV2"
+        },
+        "outputStartMode": "JobStartTime",
+        "outputStartTime": "2025-04-09T20:05:41.137Z",
+        "eventsOutOfOrderPolicy": "Adjust",
+        "outputErrorPolicy": "Stop",
+        "eventsOutOfOrderMaxDelayInSeconds": 0,
+        "eventsLateArrivalMaxDelayInSeconds": 5,
+        "dataLocale": "en-US",
+        "compatibilityLevel": "1.2",
+        "contentStoragePolicy": "SystemAccount",
+        "jobType": "Cloud"
+      }
+    },
+    {
+      "type": "Microsoft.StreamAnalytics/streamingjobs",
+      "apiVersion": "2021-10-01-preview",
+      "name": "[parameters('streamingjobs_skytree_asa_iothub_blobstorage_t_name')]",
+      "location": "West Europe",
+      "sku": {
+        "name": "StandardV2"
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "sku": {
+          "name": "StandardV2"
+        },
+        "outputStartMode": "JobStartTime",
+        "outputStartTime": "2025-04-09T20:06:03.523Z",
+        "eventsOutOfOrderPolicy": "Adjust",
+        "outputErrorPolicy": "Stop",
+        "eventsOutOfOrderMaxDelayInSeconds": 0,
+        "eventsLateArrivalMaxDelayInSeconds": 5,
+        "dataLocale": "en-US",
+        "compatibilityLevel": "1.2",
+        "contentStoragePolicy": "SystemAccount",
+        "jobType": "Cloud"
+      }
+    },
+    {
+      "type": "Microsoft.EventHub/namespaces/authorizationrules",
+      "apiVersion": "2024-05-01-preview",
+      "name": "[concat(parameters('namespaces_skytree_eh_t_name'), '/RootManageSharedAccessKey')]",
+      "location": "westeurope",
+      "dependsOn": [
+        "[resourceId('Microsoft.EventHub/namespaces', parameters('namespaces_skytree_eh_t_name'))]"
+      ],
+      "properties": {
+        "rights": [
+          "Listen",
+          "Manage",
+          "Send"
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.EventHub/namespaces/eventhubs",
+      "apiVersion": "2024-05-01-preview",
+      "name": "[concat(parameters('namespaces_skytree_eh_t_name'), '/iot-alerts')]",
+      "location": "westeurope",
+      "dependsOn": [
+        "[resourceId('Microsoft.EventHub/namespaces', parameters('namespaces_skytree_eh_t_name'))]"
+      ],
+      "properties": {
+        "messageTimestampDescription": {
+          "timestampType": "LogAppend"
+        },
+        "retentionDescription": {
+          "cleanupPolicy": "Delete",
+          "retentionTimeInHours": 1
+        },
+        "messageRetentionInDays": 1,
+        "partitionCount": 1,
+        "status": "Active"
+      }
+    },
+    {
+      "type": "Microsoft.EventHub/namespaces/eventhubs",
+      "apiVersion": "2024-05-01-preview",
+      "name": "[concat(parameters('namespaces_skytree_eh_t_name'), '/iot-diagnostics')]",
+      "location": "westeurope",
+      "dependsOn": [
+        "[resourceId('Microsoft.EventHub/namespaces', parameters('namespaces_skytree_eh_t_name'))]"
+      ],
+      "properties": {
+        "messageTimestampDescription": {
+          "timestampType": "LogAppend"
+        },
+        "retentionDescription": {
+          "cleanupPolicy": "Delete",
+          "retentionTimeInHours": 1
+        },
+        "messageRetentionInDays": 1,
+        "partitionCount": 1,
+        "status": "Active"
+      }
+    },
+    {
+      "type": "Microsoft.EventHub/namespaces/networkrulesets",
+      "apiVersion": "2024-05-01-preview",
+      "name": "[concat(parameters('namespaces_skytree_eh_t_name'), '/default')]",
+      "location": "westeurope",
+      "dependsOn": [
+        "[resourceId('Microsoft.EventHub/namespaces', parameters('namespaces_skytree_eh_t_name'))]"
+      ],
+      "properties": {
+        "publicNetworkAccess": "Enabled",
+        "defaultAction": "Allow",
+        "virtualNetworkRules": [],
+        "ipRules": [],
+        "trustedServiceAccessEnabled": false
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices",
+      "apiVersion": "2024-01-01",
+      "name": "[concat(parameters('storageAccounts_skytreestoraget_name'), '/default')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_skytreestoraget_name'))]"
+      ],
+      "sku": {
+        "name": "Standard_LRS",
+        "tier": "Standard"
+      },
+      "properties": {
+        "cors": {
+          "corsRules": []
+        },
+        "deleteRetentionPolicy": {
+          "allowPermanentDelete": false,
+          "enabled": false
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/fileServices",
+      "apiVersion": "2024-01-01",
+      "name": "[concat(parameters('storageAccounts_skytreestoraget_name'), '/default')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_skytreestoraget_name'))]"
+      ],
+      "sku": {
+        "name": "Standard_LRS",
+        "tier": "Standard"
+      },
+      "properties": {
+        "protocolSettings": {
+          "smb": {}
+        },
+        "cors": {
+          "corsRules": []
+        },
+        "shareDeleteRetentionPolicy": {
+          "enabled": false,
+          "days": 0
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/queueServices",
+      "apiVersion": "2024-01-01",
+      "name": "[concat(parameters('storageAccounts_skytreestoraget_name'), '/default')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_skytreestoraget_name'))]"
+      ],
+      "properties": {
+        "cors": {
+          "corsRules": []
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/tableServices",
+      "apiVersion": "2024-01-01",
+      "name": "[concat(parameters('storageAccounts_skytreestoraget_name'), '/default')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_skytreestoraget_name'))]"
+      ],
+      "properties": {
+        "cors": {
+          "corsRules": []
+        }
+      }
+    },
+    {
+      "type": "Microsoft.StreamAnalytics/streamingjobs/inputs",
+      "apiVersion": "2021-10-01-preview",
+      "name": "[concat(parameters('streamingjobs_skytree_asa_iothub_adx_t_name'), '/skytree-iothub-t')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.StreamAnalytics/streamingjobs', parameters('streamingjobs_skytree_asa_iothub_adx_t_name'))]"
+      ],
+      "properties": {
+        "type": "Stream",
+        "datasource": {
+          "type": "Microsoft.Devices/IotHubs",
+          "properties": {
+            "iotHubNamespace": "skytree-iothub-t",
+            "sharedAccessPolicyName": "iothubowner",
+            "endpoint": "messages/events",
+            "consumerGroupName": "adx"
+          }
+        },
+        "compression": {
+          "type": "None"
+        },
+        "serialization": {
+          "type": "Json",
+          "properties": {
+            "encoding": "UTF8"
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.StreamAnalytics/streamingjobs/inputs",
+      "apiVersion": "2021-10-01-preview",
+      "name": "[concat(parameters('streamingjobs_skytree_asa_iothub_alerts_t_name'), '/skytree-iothub-t')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.StreamAnalytics/streamingjobs', parameters('streamingjobs_skytree_asa_iothub_alerts_t_name'))]"
+      ],
+      "properties": {
+        "type": "Stream",
+        "datasource": {
+          "type": "Microsoft.Devices/IotHubs",
+          "properties": {
+            "iotHubNamespace": "skytree-iothub-t",
+            "sharedAccessPolicyName": "iothubowner",
+            "endpoint": "messages/events",
+            "consumerGroupName": "alerts"
+          }
+        },
+        "compression": {
+          "type": "None"
+        },
+        "serialization": {
+          "type": "Json",
+          "properties": {
+            "encoding": "UTF8"
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.StreamAnalytics/streamingjobs/inputs",
+      "apiVersion": "2021-10-01-preview",
+      "name": "[concat(parameters('streamingjobs_skytree_asa_iothub_blobstorage_t_name'), '/skytree-iothub-t')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.StreamAnalytics/streamingjobs', parameters('streamingjobs_skytree_asa_iothub_blobstorage_t_name'))]"
+      ],
+      "properties": {
+        "type": "Stream",
+        "datasource": {
+          "type": "Microsoft.Devices/IotHubs",
+          "properties": {
+            "iotHubNamespace": "skytree-iothub-t",
+            "sharedAccessPolicyName": "iothubowner",
+            "endpoint": "messages/events",
+            "consumerGroupName": "blobstorage"
+          }
+        },
+        "compression": {
+          "type": "None"
+        },
+        "partitionKey": "device_id",
+        "serialization": {
+          "type": "Json",
+          "properties": {
+            "encoding": "UTF8"
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.StreamAnalytics/streamingjobs/outputs",
+      "apiVersion": "2021-10-01-preview",
+      "name": "[concat(parameters('streamingjobs_skytree_asa_iothub_blobstorage_t_name'), '/blobstorage')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.StreamAnalytics/streamingjobs', parameters('streamingjobs_skytree_asa_iothub_blobstorage_t_name'))]"
+      ],
+      "properties": {
+        "datasource": {
+          "type": "Microsoft.Storage/Blob",
+          "properties": {
+            "blobPathPrefix": "{date}/{time}/{device_id}",
+            "blobWriteMode": "Append",
+            "storageAccounts": [
+              {
+                "accountName": "skytreestoraget"
+              }
+            ],
+            "container": "iot",
+            "pathPattern": "{date}/{time}/{device_id}",
+            "dateFormat": "yyyy/MM/dd",
+            "timeFormat": "HH",
+            "authenticationMode": "ConnectionString"
+          }
+        },
+        "timeWindow": "01:00:00",
+        "sizeWindow": 100,
+        "serialization": {
+          "type": "Json",
+          "properties": {
+            "encoding": "UTF8",
+            "format": "LineSeparated"
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.StreamAnalytics/streamingjobs/outputs",
+      "apiVersion": "2021-10-01-preview",
+      "name": "[concat(parameters('streamingjobs_skytree_asa_iothub_adx_t_name'), '/iot')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.StreamAnalytics/streamingjobs', parameters('streamingjobs_skytree_asa_iothub_adx_t_name'))]"
+      ],
+      "properties": {
+        "datasource": {
+          "type": "Microsoft.Kusto/clusters/databases",
+          "properties": {
+            "cluster": "https://skytree-adx-t.westeurope.kusto.windows.net",
+            "database": "iot",
+            "table": "measurements",
+            "authenticationMode": "Msi"
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.StreamAnalytics/streamingjobs/outputs",
+      "apiVersion": "2021-10-01-preview",
+      "name": "[concat(parameters('streamingjobs_skytree_asa_iothub_alerts_t_name'), '/iot-alerts')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.StreamAnalytics/streamingjobs', parameters('streamingjobs_skytree_asa_iothub_alerts_t_name'))]"
+      ],
+      "properties": {
+        "datasource": {
+          "type": "Microsoft.EventHub/EventHub",
+          "properties": {
+            "propertyColumns": [
+              "alert_level"
+            ],
+            "partitionKey": "device_id",
+            "eventHubName": "iot-alerts",
+            "serviceBusNamespace": "skytree-eh-t",
+            "sharedAccessPolicyName": "skytree-asa-iothub-alerts-t_iot-alerts_policy",
+            "authenticationMode": "ConnectionString"
+          }
+        },
+        "serialization": {
+          "type": "Json",
+          "properties": {
+            "encoding": "UTF8",
+            "format": "LineSeparated"
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.EventHub/namespaces/eventhubs/authorizationrules",
+      "apiVersion": "2024-05-01-preview",
+      "name": "[concat(parameters('namespaces_skytree_eh_t_name'), '/iot-alerts/skytree-asa-iothub-alerts-t_iot-alerts_policy')]",
+      "location": "westeurope",
+      "dependsOn": [
+        "[resourceId('Microsoft.EventHub/namespaces/eventhubs', parameters('namespaces_skytree_eh_t_name'), 'iot-alerts')]",
+        "[resourceId('Microsoft.EventHub/namespaces', parameters('namespaces_skytree_eh_t_name'))]"
+      ],
+      "properties": {
+        "rights": [
+          "Listen",
+          "Send"
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.EventHub/namespaces/eventhubs/consumergroups",
+      "apiVersion": "2024-05-01-preview",
+      "name": "[concat(parameters('namespaces_skytree_eh_t_name'), '/iot-alerts/$Default')]",
+      "location": "westeurope",
+      "dependsOn": [
+        "[resourceId('Microsoft.EventHub/namespaces/eventhubs', parameters('namespaces_skytree_eh_t_name'), 'iot-alerts')]",
+        "[resourceId('Microsoft.EventHub/namespaces', parameters('namespaces_skytree_eh_t_name'))]"
+      ],
+      "properties": {}
+    },
+    {
+      "type": "Microsoft.EventHub/namespaces/eventhubs/consumergroups",
+      "apiVersion": "2024-05-01-preview",
+      "name": "[concat(parameters('namespaces_skytree_eh_t_name'), '/iot-diagnostics/$Default')]",
+      "location": "westeurope",
+      "dependsOn": [
+        "[resourceId('Microsoft.EventHub/namespaces/eventhubs', parameters('namespaces_skytree_eh_t_name'), 'iot-diagnostics')]",
+        "[resourceId('Microsoft.EventHub/namespaces', parameters('namespaces_skytree_eh_t_name'))]"
+      ],
+      "properties": {}
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2024-01-01",
+      "name": "[concat(parameters('storageAccounts_skytreestoraget_name'), '/default/iot')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccounts_skytreestoraget_name'), 'default')]",
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_skytreestoraget_name'))]"
+      ],
+      "properties": {
+        "immutableStorageWithVersioning": {
+          "enabled": false
+        },
+        "defaultEncryptionScope": "$account-encryption-key",
+        "denyEncryptionScopeOverride": false,
+        "publicAccess": "None"
+      }
+    }
+  ]
+}
